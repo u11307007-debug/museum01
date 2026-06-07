@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wall 控制頁面</title>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background: #000;
+      color: #f5f5f5;
+    }
+    .viewer {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .image-box {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+    img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .hint {
+      position: absolute;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 0.94rem;
+      pointer-events: none;
+      text-shadow: 0 0 10px rgba(0, 0, 0, 0.6);
+    }
+    .side-button, .overlay-button {
+      position: absolute;
+      border: none;
+      background: transparent;
+      color: #f5f5f5;
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+    .side-button {
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 2.1rem;
+      padding: 36px 42px;
+      border-radius: 999px;
+      z-index: 20;
+    }
+    .overlay-button {
+      padding: 24px 33px;
+      border-radius: 999px;
+      font-size: 2.7rem;
+      white-space: nowrap;
+    }
+    .side-button:hover,
+    .overlay-button:hover {
+      color: #ffcc00;
+    }
+    #prevBtn {
+      left: 16px;
+    }
+    #nextBtn {
+      right: 180px;
+    }
+    #artBtn {
+      bottom: 35%;
+      left: 22%;
+      transform: translateX(-50%);
+    }
+    #memoryBtn {
+      bottom: 35%;
+      left: 48%;
+      transform: translateX(-50%);
+    }
+    #dotBtn {
+      bottom: 20%;
+      left: 40%;
+      transform: translateX(-50%);
+      /* 暫時隱藏，保留按鈕供日後功能使用 */
+      display: none;
+    }
+    .gallery-overlay {
+      position: absolute;
+      top: 18%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 86%;
+      display: flex;
+      justify-content: space-between;
+      gap: 1.5%;
+      pointer-events: auto;
+    }
+
+    #wall09GoodsOverlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      pointer-events: none;
+      z-index: 8;
+    }
+
+    /* wall-09 scanner & info panel */
+    #wall09Progress {
+      position: absolute;
+      left: 18px;
+      bottom: 20px;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 0.88rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      pointer-events: none;
+      text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+      display: none;
+      z-index: 12;
+    }
+    #wall09ScanArea {
+      position: absolute;
+      right: 18px;
+      top: 18px;
+      z-index: 30;
+      display: none;
+    }
+    #wall09ScanBtn {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 10px;
+      background: #ffcc00;
+      color: #222;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+      transition: background 0.2s ease;
+    }
+    #wall09ScanBtn:hover {
+      background: #ffe066;
+    }
+    #wall09Scanner {
+      position: relative;
+      width: 260px;
+      height: 220px;
+      display: none;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+      background: #000;
+    }
+    #wall09Video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    #wall09ScannerStatus {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 6px 10px;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      font-size: 0.82rem;
+      text-align: center;
+      display: none;
+    }
+    #wall09ScannerMsg {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 12px;
+      color: #fff;
+      background: rgba(0,0,0,0.75);
+      z-index: 31;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+    #wall09ScannerMsg button {
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: none;
+      background: #ffcc00;
+      color: #222;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    /* good info panel: image left, text right; wider and slightly scaled up */
+    /* good info panel: fixed on viewport (always above museum content) */
+    #goodInfoPanel {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) scale(1.2);
+      transform-origin: center center;
+      display: none;
+      z-index: 9999;
+      background: rgba(0, 0, 0, 0.72);
+      color: #f5f5f5;
+      padding: 40px;
+      border-radius: 16px;
+      width: min(980px, 96%);
+      box-shadow: 0 28px 80px rgba(0,0,0,0.6);
+      max-height: 180vh;
+      height: 500px;
+      align-items: center;
+      gap: 28px;
+      flex-direction: row;
+      overflow: hidden;
+    }
+    #goodInfoPanel.show {
+      display: flex;
+    }
+    #goodInfoPanel img {
+      display: block;
+      width: auto;
+      height: auto;
+      max-width: 300px;
+      max-height: 340px;
+      object-fit: contain;
+      object-position: center center;
+      border-radius: 12px;
+      flex: 0 0 auto;
+      margin-right: 40px;
+      align-self: center;
+    }
+    #goodInfoPanel .info { overflow: hidden; flex: 1 1 auto; min-width: 0; z-index: 2; }
+    #goodInfoPanel .info h3 { margin: 0 0 12px 0; font-size: 1.8rem; font-weight: 800; }
+    #goodInfoPanel .info p { margin: 0; opacity: 0.95; font-size: 1.12rem; line-height: 1.6; }
+    #goodInfoPanel .close { position: absolute; right: 18px; top: 18px; background: transparent; border: none; font-size: 1.9rem; cursor: pointer; color: #f5f5f5; }
+    @media (max-width: 900px) {
+      #goodInfoPanel { transform: translate(-50%, -50%) scale(1); width: min(92%, 680px); padding: 20px; flex-direction: column; }
+      #goodInfoPanel img { max-width: 180px; max-height: 180px; width: auto; height: auto; margin-bottom: 12px; }
+      #goodInfoPanel .info h3 { font-size: 1.4rem; }
+      /* 減少小螢幕上的向上位移，並調整內距 */
+      #goodInfoPanel .info { transform: translateY(-10%); padding-left: 20px; }
+    }
+
+    /* easter egg: all items collected */
+    #easterEggOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 100000;
+      display: none;
+    }
+    #easterEggOverlay.show {
+      display: block !important;
+    }
+    #easterEggModal {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 100001;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      padding: 36px 40px;
+      background: rgba(0, 0, 0, 0.82);
+      color: #f5f5f5;
+      border-radius: 16px;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.7);
+      text-align: center;
+      max-width: min(420px, 90%);
+      pointer-events: auto;
+    }
+    #easterEggModal.show {
+      display: flex !important;
+    }
+    #easterEggModal h3 {
+      margin: 0;
+      font-size: 1.35rem;
+      line-height: 1.65;
+      font-weight: 600;
+    }
+    #mysteryKey {
+      font-size: 4rem;
+      line-height: 1;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      filter: drop-shadow(0 0 12px rgba(255, 204, 0, 0.8));
+      animation: keyBounce 1.2s ease-in-out infinite;
+      transition: transform 0.2s ease, filter 0.2s ease;
+    }
+    #mysteryKey:hover {
+      filter: drop-shadow(0 0 22px rgba(255, 204, 0, 1));
+      animation: none;
+      transform: scale(1.12);
+    }
+    @keyframes keyBounce {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-8px) scale(1.08); }
+    }
+
+    /* wall-10 hint & epilogue sequence */
+    .image-box.wall10-clickable {
+      cursor: pointer;
+    }
+    #wall10Hint {
+      position: absolute;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%);
+      color: rgba(255, 255, 255, 0.75);
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      pointer-events: none;
+      text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+      display: none;
+      z-index: 12;
+    }
+    #epilogueDarken {
+      position: absolute;
+      inset: 0;
+      background: #000;
+      opacity: 0;
+      transition: opacity 2s ease;
+      pointer-events: none;
+      z-index: 14;
+    }
+    #epilogueDarken.active {
+      opacity: 0.72;
+    }
+    #epilogueLayer {
+      position: absolute;
+      inset: 0;
+      display: none;
+      z-index: 15;
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity 2s ease;
+    }
+    #epilogueLayer.visible {
+      display: flex;
+      align-items: center;
+      gap: 3%;
+      padding: 6% 4%;
+      box-sizing: border-box;
+    }
+    #epilogueLayer.fade-out {
+      opacity: 0;
+    }
+    #epiloguePhotos {
+      position: relative;
+      width: auto;
+      height: 86.4%;
+      aspect-ratio: 9 / 16;
+      flex: 0 0 auto;
+      align-self: center;
+      overflow: hidden;
+      border-radius: 8px;
+    }
+    #epiloguePhotos img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transition: opacity 1s ease;
+    }
+    #epiloguePhotos img.active {
+      opacity: 1;
+    }
+    #epilogueCredits {
+      width: 50%;
+      height: 72%;
+      flex: 1 1 auto;
+      overflow: hidden;
+      position: relative;
+      mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
+    }
+    #epilogueCreditsText {
+      position: absolute;
+      left: 0;
+      right: 0;
+      padding: 0 12px;
+      color: rgba(245, 245, 245, 0.92);
+      font-size: 1.14rem;
+      line-height: 2;
+      letter-spacing: 0.04em;
+      white-space: pre-wrap;
+      will-change: transform;
+    }
+    @keyframes epilogueCreditScroll {
+      from { transform: translateY(100%); }
+      to { transform: translateY(-100%); }
+    }
+    @media (max-width: 900px) {
+      #epilogueLayer.visible {
+        flex-direction: column;
+        padding: 8% 5%;
+        gap: 4%;
+      }
+      #epiloguePhotos {
+        width: auto;
+        height: 45.6%;
+        aspect-ratio: 9 / 16;
+        flex: 0 0 auto;
+        align-self: center;
+      }
+      #epilogueCredits {
+        width: 100%;
+        height: auto;
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+      #epilogueCreditsText {
+        font-size: 1.02rem;
+        line-height: 1.85;
+      }
+    }
+
+    #wall09GoodsOverlay .good-item {
+      position: absolute;
+      width: 8%;
+      max-width: 100px;
+      aspect-ratio: 4 / 5;
+      overflow: hidden;
+      border: none;
+      border-radius: 12px;
+      box-shadow: none;
+      background: transparent;
+    }
+
+    #wall09GoodsOverlay .good-item img {
+      position: static;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    #wall09GoodsOverlay .good-item:nth-child(1) { top: 40%; left: 17%; width: 160px; height: 150px; max-width: none; }
+    #wall09GoodsOverlay .good-item:nth-child(2) { top: 50%; left: 8%; width: 190px; height: 180px; max-width: none; }
+    #wall09GoodsOverlay .good-item:nth-child(3) { top: 58%; left: 35%; width: 180px; height: 150px; max-width: none; }
+    #wall09GoodsOverlay .good-item:nth-child(4) { top: 7%; left: 28%; width: 300px; height: 250px; max-width: none; }
+    #wall09GoodsOverlay .good-item:nth-child(5) { top: 30%; left: 47%; width: 180px; height: 150px; max-width: none; }
+    #wall09GoodsOverlay .good-item:nth-child(6) { top: 56%; left: 51.5%; width: 200px; height: 140px; max-width: none; }
+    #wall09GoodsOverlay .good-item:nth-child(7) { top: 38%; left: 78%; width: 150px; height: 150px; max-width: none; }
+    #wall09GoodsOverlay .good-item:nth-child(8) { top: 55%; left: 91%; width: 150px; height: 150px; max-width: none; }
+
+    @media (max-width: 1024px) {
+      #wall09GoodsOverlay .good-item { width: 120px; height: 150px; }
+    }
+
+    @media (max-width: 760px) {
+      #wall09GoodsOverlay .good-item { width: 120px; height: 150px; }
+      #wall09GoodsOverlay .good-item:nth-child(1) { top: 20%; left: 8%; }
+      #wall09GoodsOverlay .good-item:nth-child(2) { top: 44%; left: 8%; }
+      #wall09GoodsOverlay .good-item:nth-child(3) { top: 68%; left: 8%; }
+      #wall09GoodsOverlay .good-item:nth-child(4) { top: 20%; left: 36%; }
+      #wall09GoodsOverlay .good-item:nth-child(5) { top: 20%; left: 50%; }
+      #wall09GoodsOverlay .good-item:nth-child(6) { top: 20%; left: 64%; }
+      #wall09GoodsOverlay .good-item:nth-child(7) { top: 20%; left: 78%; }
+      #wall09GoodsOverlay .good-item:nth-child(8) { top: 58%; left: 78%; }
+    }
+
+    /* 交錯排列：wall-04 專用 class */
+    .gallery-overlay.alt-rows {
+      padding-top: 4%; /* 增加上方空間，避免被裁切 */
+      align-items: flex-start;
+    }
+    .gallery-overlay.alt-rows .gallery-frame {
+      transform-origin: center center;
+    }
+    .gallery-overlay.alt-rows .gallery-frame:nth-child(1),
+    .gallery-overlay.alt-rows .gallery-frame:nth-child(3) {
+      transform: translateY(-40%) rotate(90deg); /* 第1、3 張上移 40% 並旋轉 90 度 */
+    }
+    .gallery-overlay.alt-rows .gallery-frame:nth-child(2),
+    .gallery-overlay.alt-rows .gallery-frame:nth-child(4) {
+      transform: translateY(40%) rotate(90deg); /* 第2、4 張下移 40% 並旋轉 90 度 */
+    }
+    /* 小螢幕時降低偏移，避免重疊 */
+    @media (max-width: 900px) {
+      .gallery-overlay.alt-rows .gallery-frame:nth-child(1),
+      .gallery-overlay.alt-rows .gallery-frame:nth-child(3) {
+        transform: translateY(-20%) rotate(90deg);
+      }
+      .gallery-overlay.alt-rows .gallery-frame:nth-child(2),
+      .gallery-overlay.alt-rows .gallery-frame:nth-child(4) {
+        transform: translateY(20%) rotate(90deg);
+      }
+    }
+    .gallery-frame {
+      position: relative;
+      flex: 1 1 0;
+      min-width: 0;
+      aspect-ratio: 4 / 3;
+      background: rgba(111, 78, 55, 0.08); /* 淺咖啡背景 */
+      border: 8px solid #6f4e37; /* 咖啡色相框 */
+      box-shadow: 0 14px 26px rgba(0, 0, 0, 0.35);
+      overflow: hidden;
+    }
+    .gallery-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .gallery-overlay.alt-rows .gallery-frame img {
+      transform: rotate(-90deg) scale(1.43);
+      object-fit: contain;
+    }
+    .gallery-frame::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: 2px solid rgba(111, 78, 55, 0.14); /* 輕微咖啡色邊緣 */
+      pointer-events: none;
+    }
+    /* detail-view: image left, text right; wider (+60%) and slightly scaled (+20%) */
+    .detail-view {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) scale(1.2);
+      transform-origin: center center;
+      width: min(1440px, 96%); /* previous ~900 * 1.6 */
+      max-height: 126vh;
+      display: none;
+      gap: 28px;
+      z-index: 9998;
+      pointer-events: auto;
+      align-items: stretch;
+      justify-content: flex-start;
+      padding: 20px;
+      box-shadow: 0 22px 70px rgba(0,0,0,0.65);
+      border-radius: 16px;
+      background: rgba(8,8,8,0.6);
+      overflow: hidden;
+      display: flex;
+      flex-direction: row;
+    }
+    .detail-left,
+    .detail-right {
+      position: relative;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .detail-left {
+      width: 48%;
+      min-width: 360px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+    }
+    .detail-left img {
+      width: 100%;
+      height: 100%;
+      max-height: calc(126vh - 210px);
+      object-fit: contain;
+      display: block;
+    }
+    .detail-right {
+      width: 52%;
+      min-width: 400px;
+      padding: 28px;
+      color: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    @media (max-width: 1100px) {
+      .detail-view { transform: translate(-50%, -50%) scale(1); width: min(92%, 920px); flex-direction: column; }
+      .detail-left, .detail-right { width: 100%; min-width: 0; }
+      .detail-view .detail-left img { max-height: 630px; }
+    }
+    .detail-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      border: none;
+      background: rgba(255, 255, 255, 0.12);
+      color: #f5f5f5;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.4rem;
+    }
+    .detail-title {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+    .detail-artist {
+      font-size: 1.2rem;
+      opacity: 0.9;
+    }
+    .detail-description {
+      flex: 1;
+      font-size: 1rem;
+      line-height: 1.7;
+      opacity: 0.95;
+      white-space: pre-wrap;
+    }
+    .detail-view.show {
+      display: flex;
+    }
+    .detail-view.hidden {
+      display: none;
+    }
+    .detail-overlay{
+      position:absolute;
+      inset:0;
+      background:rgba(0,0,0,0.35);
+      display:none;
+      z-index:9;
+    }
+    .detail-overlay.show{
+      display:block;
+    }
+    .detail-overlay.hide{
+      display:none;
+    }
+    .detail-view button{
+      background: rgba(255,255,255,0.12);
+    }
+    .detail-right .detail-description {
+      overflow-y: auto;
+    }
+    .details-box {
+      display: flex;
+      gap: 2%;
+      width: 100%;
+      align-items: stretch;
+    }
+    .detail-right {
+      backdrop-filter: blur(10px);
+    }
+    .detail-view::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.2);
+      pointer-events: none;
+      border-radius: 18px;
+    }
+    .detail-view .detail-right {
+      background: rgba(16,16,16,0.85);
+    }
+    .detail-view .detail-left {
+      background: rgba(16,16,16,0.75);
+    }
+    .detail-right .detail-close {
+      background: rgba(255,255,255,0.1);
+    }
+    .detail-right .detail-close:hover {
+      background: rgba(255,255,255,0.18);
+    }
+    .detail-view .detail-right {
+      padding-top: 56px;
+    }
+    .detail-right .detail-thumbnail {
+      display: none;
+    }
+    .detail-right .detail-title {
+      margin-top: 12px;
+    }
+    .detail-description {
+      margin-bottom: 16px;
+    }
+    .detail-view .detail-left {
+      min-height: 100%;
+    }
+    .detail-right {
+      min-height: 100%;
+    }
+    .detail-right .detail-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+    }
+    .gallery-overlay {
+      z-index: 5;
+    }
+    .detail-view {
+      z-index: 12;
+    }
+    .detail-overlay {
+      z-index: 11;
+    }
+    .detail-view .detail-right {
+      overflow-x: visible;
+      overflow-y: auto;
+    }
+    .detail-view .detail-description {
+      max-height: calc(100% - 150px);
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+    .detail-view .detail-left img {
+      border-radius: 0;
+    }
+    .detail-left, .detail-right {
+      box-sizing: border-box;
+    }
+    .detail-view.hide {
+      display: none;
+    }
+    .detail-view.show {
+      display: flex;
+    }
+    .detail-right {
+      justify-content: flex-start;
+    }
+
+    .detail-left {
+      padding: 16px;
+    }
+    .detail-right {
+      padding: 24px;
+    }
+    .detail-view {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(1440px, 96%);
+      max-height: 126vh;
+      display: none;
+      gap: 28px;
+      align-items: stretch;
+      z-index: 40;
+      padding: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      border-radius: 16px;
+      background: rgba(8,8,8,0.6);
+      overflow: hidden;
+      flex-direction: row;
+    }
+    .detail-view .detail-left {
+      width: 45%;
+      min-width: 320px;
+      padding: 16px;
+    }
+    .detail-view .detail-right {
+      width: 55%;
+      min-width: 400px;
+      padding: 28px;
+      padding-left: 28px;
+    }
+    .detail-right .detail-close {
+      font-weight: 700;
+    }
+    .detail-right h1 {
+      margin: 0;
+    }
+    .detail-right h2 {
+      margin: 4px 0 16px;
+    }
+    .detail-right p {
+      margin: 0;
+    }
+    .home-title {
+      position: absolute;
+      top: 20%;
+      left: 35%;
+      transform: translateX(-50%);
+      color: #f5f5f5;
+      font-size: 6rem;
+      text-align: center;
+      line-height: 1.05;
+      letter-spacing: 0.08em;
+      text-shadow: 0 0 18px rgba(0, 0, 0, 0.7);
+      font-weight: 700;
+      white-space: pre-line;
+    }
+    /* Quick tweak: push text area right to avoid overlap with images */
+    #goodInfoPanel .info {
+      padding-left: 300px;
+      min-width: 0;
+      box-sizing: border-box;
+      transform: translateY(-30%); /* 向上移動 30% */
+    }
+  </style>
+</head>
+<body>
+  <div class="viewer">
+    <div class="image-box">
+      <img id="wallImage" src="wall/wall-00.JPG" alt="Wall 00" />
+      <div id="epilogueDarken"></div>
+      <div id="epilogueLayer">
+        <div id="epiloguePhotos">
+          <img src="photo/1.jpeg" alt="Photo 1" class="active" />
+          <img src="photo/2.jpeg" alt="Photo 2" />
+          <img src="photo/3.jpeg" alt="Photo 3" />
+          <img src="photo/4.jpeg" alt="Photo 4" />
+          <img src="photo/5.jpeg" alt="Photo 5" />
+        </div>
+        <div id="epilogueCredits">
+          <div id="epilogueCreditsText">陳澄波雖然倒在了1947年的槍聲之中，但他對台灣的愛與藝術靈魂，卻因為妻子張捷的堅忍而得以延續。在肅殺的白色恐怖時期，張捷強忍悲痛，秘密請攝影師拍下丈夫最後的遺容後，便將那套帶有彈孔的衣物、絕筆遺書、檢案書，以及陳澄波生前留下的上萬件畫作與草圖，全數小心翼翼地隱藏起來。
+
+為了保護這些遺物不被當局查抄銷毀，張捷長達數十年對外噤聲。她獨自吞下家破人亡的苦楚，用一生的時間與極大的勇氣，默默守護著台灣美術史上最珍貴的資產。直到台灣社會氣氛逐漸開放，陳澄波的名字與畫作才終於重見天日，家屬也隨後成立了「陳澄波文化基金會」，致力於畫作的修復與推廣。張捷當年的隱忍與勇敢，不僅保全了丈夫的畢生心血，更讓陳澄波畫筆下那熱情奔放的台灣陽光，重新照亮了這座島嶼的歷史。</div>
+        </div>
+      </div>
+      <div id="wall10Hint">點擊畫面繼續</div>
+      <div id="homeTitle" class="home-title">陳澄波線上美術館</div>
+      <button id="artBtn" class="overlay-button" aria-label="畫作欣賞">畫作欣賞</button>
+      <button id="memoryBtn" class="overlay-button" aria-label="物品記憶">物品記憶</button>
+      <button id="dotBtn" class="overlay-button" aria-label="點">。</button>
+      <div id="galleryOverlay" class="gallery-overlay" style="display:none;">
+        <div class="gallery-frame"><img id="frameImg1" src="" alt="Gallery 1"></div>
+        <div class="gallery-frame"><img id="frameImg2" src="" alt="Gallery 2"></div>
+        <div class="gallery-frame"><img id="frameImg3" src="" alt="Gallery 3"></div>
+        <div class="gallery-frame"><img id="frameImg4" src="" alt="Gallery 4"></div>
+      </div>
+      <div id="wall09GoodsOverlay">
+        <div class="good-item"><img src="goods/good-001.PNG" alt="Good 1"></div>
+        <div class="good-item"><img src="goods/good-002.PNG" alt="Good 2"></div>
+        <div class="good-item"><img src="goods/good-003.PNG" alt="Good 3"></div>
+        <div class="good-item"><img src="goods/good-004.PNG" alt="Good 4"></div>
+        <div class="good-item"><img src="goods/good-005.PNG" alt="Good 5"></div>
+        <div class="good-item"><img src="goods/good-006.PNG" alt="Good 6"></div>
+        <div class="good-item"><img src="goods/good-007.PNG" alt="Good 7"></div>
+        <div class="good-item"><img src="goods/good-008.PNG" alt="Good 8"></div>
+      </div>
+
+      <div id="wall09Progress">0/8</div>
+
+      <!-- wall-09 scanner: user-initiated, top-right -->
+      <div id="wall09ScanArea">
+        <button id="wall09ScanBtn" type="button">開啟相機掃描</button>
+        <div id="wall09Scanner">
+          <video id="wall09Video" playsinline muted autoplay></video>
+          <div id="wall09ScannerStatus">正在掃描中…</div>
+          <div id="wall09ScannerMsg">
+            <div id="wall09ScannerMsgText"></div>
+            <button id="wall09ScannerRetry" type="button">重試</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- good info panel shown after scan -->
+      <div id="goodInfoPanel">
+        <button id="goodInfoClose" class="close" type="button" aria-label="關閉">×</button>
+        <img id="goodInfoImg" src="" alt="Good">
+        <div class="info">
+          <h3 id="goodInfoTitle">物品名稱</h3>
+          <p id="goodInfoText">說明文字...</p>
+        </div>
+      </div>
+
+      <div id="detailOverlay" class="detail-overlay"></div>
+      <div id="detailView" class="detail-view" aria-hidden="true">
+        <div class="detail-left"><img id="detailImg" src="" alt="Detail"></div>
+        <div class="detail-right">
+          <button id="detailClose" class="detail-close" aria-label="關閉">×</button>
+          <h1 id="detailTitle" class="detail-title">Title</h1>
+          <h2 id="detailArtist" class="detail-artist">Artist</h2>
+          <p id="detailDescription" class="detail-description">Description</p>
+        </div>
+      </div>
+      <button id="prevBtn" class="side-button" aria-label="上一張">←</button>
+      <button id="nextBtn" class="side-button" aria-label="下一張">→</button>
+      <div class="hint">請按上方按鈕進入下一頁</div>
+    </div>
+  </div>
+
+  <div id="easterEggOverlay"></div>
+  <div id="easterEggModal">
+    <h3>恭喜！您已收集所有物品記憶！<br>神秘的鑰匙出現了……</h3>
+    <button id="mysteryKey" type="button" aria-label="神秘鑰匙">🔑</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script>
+    const imageEl = document.getElementById('wallImage');
+    const imageBox = document.querySelector('.image-box');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const artBtn = document.getElementById('artBtn');
+    const memoryBtn = document.getElementById('memoryBtn');
+    const dotBtn = document.getElementById('dotBtn');
+    const homeTitle = document.getElementById('homeTitle');
+    const galleryOverlay = document.getElementById('galleryOverlay');
+    const frameImg1 = document.getElementById('frameImg1');
+    const frameImg2 = document.getElementById('frameImg2');
+    const frameImg3 = document.getElementById('frameImg3');
+    const frameImg4 = document.getElementById('frameImg4');
+    const detailOverlay = document.getElementById('detailOverlay');
+    const detailView = document.getElementById('detailView');
+    const wall09GoodsOverlay = document.getElementById('wall09GoodsOverlay');
+    const detailImg = document.getElementById('detailImg');
+    const detailTitle = document.getElementById('detailTitle');
+    const detailArtist = document.getElementById('detailArtist');
+    const detailDescription = document.getElementById('detailDescription');
+    const detailClose = document.getElementById('detailClose');
+
+    const paintingInfo = {
+      1: { title: '《東台灣臨海道路》', artist: '陳澄波，1930年，畫布油彩，69.7×130.5公分，日本山口縣防府市（典藏於山口縣立美術館）。', description: `1930年夏天，陳澄波來到花蓮，探訪一條沿著峭壁開鑿的道路。這條道路叫做臨海道路，銜接起蘇澳與太魯閣，為今日蘇花公路的前身。
+
+這次的陳澄波有任務在身。前臺灣總督上山滿之進（1869-1938，任期1926.7-1928.6），希望這位名聞遐邇的臺灣畫家，畫下臺灣的風景，讓回到日本的他，回味在臺灣的時光。壯觀的臨海道路風景，應該可以當成這位離職總督的紀念品。然而，就陳澄波而言，眼前的臨海道路，壯觀有餘，但卻沒有人類在這片土地上生活的痕跡。
+
+畫中，臨海道路是把各樣人與地景縫合起來的線。臨海道路右側本是一片沙灘，陳澄波替換為一個太魯閣族的村落。這個村落當時稱為「達奇里」：日文常寫做「タッキリ」，這是由太魯閣語「Tkijig」轉來的名字，漢字寫做「立霧」；也因為這地名，那條形塑了太魯閣峽谷的溪流，便被稱為立霧溪。
+
+他也在海面上加了一艘船。那是阿美族傳統的獨木舟。
+
+這艘獨木舟或許將航向在島嶼東側終年奔流的黑潮，捕捉乘其而行的魚群。這道飽含養分與生物資源的強勁洋流，如同西南季風與東北季風一樣，眷顧了東臺灣，且不時因季風的影響，把他的手臂，輕輕地環繞著整座島。` },
+      2: { title: '《松邨夕照》', artist: '陳澄波，1932年，畫布油彩，私人收藏。', description:`畫中以近中遠景三段式構圖，描繪黃昏時分鄉間農家的生活場景，近景處聳立著一棵挺拔高大的樹木，畫家以大樹的主幹以及向左上方延伸的枝葉作為景框，框出整幅畫面。
+
+兩名婦女蹲在大樹下的溪畔洗衣，一戶農家的茅草屋位在隔著小溪的中景處，門前是大片的黃泥地，放置了一具牛車，一旁圍著粗糙簡陋的圍籬。草屋旁有一叢竹，兩個孩童坐在綠蔭下作功課。農家豢養的雞鴨，分散在地面和小溪中覓食。遠景處的淺塘後方有另一棟農舍房屋，屋前坐著一人，正看著前方池塘中的兩隻鵝。
+
+畫家對農家刻苦生活的刻畫，反映其對底層農民與大眾的關懷。`},
+      3: { title: '《我的家庭》', artist: '陳澄波，年代不詳，畫布油彩，91×116.5公分，私人收藏。', description: `本畫是陳澄波唯一現存的全家福作品，據他寫於1931年2月3日，寄給東京美術學校《校友會月報》的信中描述：「最近完成一張50號的全家福畫像。和以往美麗的畫不同，這是一幅非常深沉的畫。」此處所提到的全家福作品，應該就是《我的家庭》。
+
+畫面中的人物，均穿著厚重的冬衣，人物由左到右依序是：陳澄波、次女陳碧女、妻子張捷、長子陳重光、長女陳紫薇。每個人物身旁都有一個代表自己身份、性格的道具：陳澄波手持油畫用具、桌上有本題為《普羅繪畫論》的書，妻子手拿針線縫補衣物，兩個女兒手邊各有圖片與書本，幼子手上有個玩具；桌子的正央則是中國傳統文房用具與收信人陳澄波的中式信封。
+
+全畫以多視點、反透視的方式配置物象，讓觀者清楚看到畫中每個角色、物品的外觀。畫家悉心刻劃人物衣著與室內場景，呈現精巧的裝飾美感，並以厚塗技法描繪人物神情。整幅畫面透出深沈的氣氛，畫家信守的價值似乎埋藏於畫面物件背後的象徵意義中。`, },
+      4: { title: '《嘉義街景》', artist: '陳澄波，1934年，畫布油彩，91×116.5公分，私人收藏。', description: `新式樓房矗立在市街當中，與鄰近的木頭房子、傳統店屋形成有趣的對比。建築物的周圍，陽光徐徐降落，在地面上鋪成大片的暖黃。沐浴在溫熱的光線裡，畫中的一切景物也映現出和煦可愛的顏色。近景一株大樹伸展成蓬幕，彷彿要為街上的人群提供遮蔭。
+
+騎樓是流行於中國南方與東南亞地區的建築型制，在高溫多雨的氣候環境裡，街屋前的走廊可以為行人提供遮蔽。日治時期嘉義市區的現代化建設過程中，「亭仔腳」的設置也被政府納入法令，繼而成為熱鬧市街裡的常見景觀。` },
+      6: { title: '《淡水夕照》', artist: '陳澄波，約1935-1937年，畫布油彩，91×116.5公分，私人收藏。', description: `本作的構圖係由陳澄波在相對制高點俯瞰而成，內容主要描繪淡水河岸口和淡水小鎮的特殊風貌，可見畫面中的紅色屋瓦自右前方的前景部分一直延續到後景，而這些房舍別於西方幾何都市計劃的規矩排列，是一種具有機，並隨著山行水勢而成的混雜，畫面視角直至與左方淡水河口交會，色彩對比強烈，筆觸粗曠。
+
+最終，能在層層堆砌的建築群中，仍清晰可見現今的淡水長老教會的尖塔置於右方，藉由此作品得以重現日治時期淡水地區的區域風貌與人文景觀。` },
+      5: { title: '《展望諸羅城》', artist: '陳澄波，1934年，畫布油彩，73×91公分，嘉義市立美術館典藏。', description: `1934年，在某個夏日午後，陳澄波來到嘉義公園與嘉義樹木園一帶寫生。
+
+早在日本時代初期，由於嘉義為北回歸線經過之區，以南便是「熱帶」，總督府於是在當地展開熱帶樹種的培育實驗。至陳澄波作畫當時，嘉義已成就一幅曼妙的熱帶景緻。
+
+陳澄波畫下兩叢茂密高聳的樹，可能是栽植在嘉義公園與樹木園的大葉桃花心木、橡膠樹等熱帶樹種。他也畫下今日中山路兩側的稻田，以及被植被環繞的諸羅城。
+
+之所以有這樣生氣蓬勃的景象，答案在於遠方的那抹雲。那是高層雲與積雨雲，意味著有股包含水氣的氣流，正在嘉義上空凝聚。這是即將降雨的徵兆。` },
+      7: { title: '《自畫像 (一)》', artist: '陳澄波，1928年，畫布油彩，41×31.5公分，私人收藏。', description: `畫中的人物角度與陰鬱眼神，以及背景的裝飾，都令人聯想到荷蘭的知名畫家梵谷。實際上，陳澄波在上海結識的畫家朋友倪貽德，便曾在雜誌上介紹陳澄波是「梵谷的崇拜者」，這幅自畫像，或也體現了梵谷對陳澄波的影響。
+
+在陳澄波遭到殺害以後，他的妻子張捷便將這幅自畫像擺上了家中的神桌，讓家人擁有一個追思與祭拜的憑藉。這張肖像畫在陳家後人的供桌上停留了超過半個世紀，直到近年來陳澄波的畫作修復工程啟動之後，才終於被取下。
+
+自畫像可以看成一種自我介紹的方式。畫家對於自身的描繪，也會反映出他對自己的認識，或體現個人的生命期許。在這幅畫裡，陳澄波讓自己的側臉蒙上了陰鬱的影子，但眼神似乎透露著某種堅毅，你覺得他想要表達什麼呢？` },
+      8: { title: '《山居（太魯閣）》', artist: '陳澄波，1934年，畫布油彩，72×60公分，東京藝術大學典藏。', description: `臺灣有山也有海。有人傍海而生，就有人依山而活。1934年，陳澄波前往太魯閣寫生，認識了一群以山為家的人群。他畫下一位坐在獵寮中的太魯閣族耆老，正抽著菸斗。這名老人的身後是條瀑布，兩側則有著如同火焰上竄的翠綠闊葉林。
+
+太魯閣的奇景是季風的饋贈。倘若大地是塊畫布，那麼季風就是如陳澄波般的畫家。季風用水氣作為顏料，在板塊形成的皺褶中，暈染出一片茂林；水氣匯聚而成的山㵎，如同一把畫刀，鑿切岩壁，塑造出壯麗的峽谷景觀。` },
+      9: { title: '《北回歸線地標》', artist: '陳澄波，1924年，畫布油彩，45×33公分，私人收藏 。', description: `1924年，正在日本東京學畫的陳澄波，趁著假期回鄉。他迫切想要入畫的題材是，前一年才因日本裕仁皇太子（即日後的昭和天皇）訪臺而重建的北回歸線地標。這座新地標位於北回歸線與縱貫鐵路、縱貫道路的交界處。
+
+在陳澄波作畫的當下，地標想必在陽光下閃閃發亮；縱貫道路上新植的行道樹，想必在陽光下縮成一團。
+
+然而，嘉義人陳澄波，明白眼前的生命不會被直射的太陽烤乾。
+
+他在圖紙上緣，塗了片低垂的靛藍色天空，以及如大雨將至前鋪滿天空的積雨雲。在圖的右側，他畫上滿滿的相思樹。他知道，即將落下的大雨，將會為北回歸線上的生命，帶來生機。` },
+      10: { title: '《測候所》', artist: '陳澄波，1914年，水彩，31.2×23.8公分，私人收藏。', description: `陳澄波的第一幅水彩畫，當時的他因為對繪畫的風格有相當的堅持，曾被任教老師評論為是個十分有主見又固執的人。陳澄波的水彩結合了中國的古典水墨以及西洋的新式風景畫法，值得一看。` },
+      11: { title: '《雲海》', artist: '陳澄波，1935年，木板油彩，24×33公分，私人收藏。', description: `有時候你得登高，從一個俯視的視角，方能體會到什麼是匯聚。
+
+臺灣是座高山島。之所以會形成這樣的地形，是因為菲律賓海板塊與歐亞板塊相持不下所致。就像是眾多籃球中鋒，墊著腳尖，擠在一塊瑜伽墊上。綜觀世界，另一處因同樣理由而產生的高山區，就是喜馬拉雅山區。
+
+1935年，陳澄波來到位於阿里山區的對高岳或祝山一帶，往下眺望。他看見雲海在他的腳下。他屏息著，等著雲海破開的那霎那，畫下奔騰的陳有蘭溪。這幅畫叫做《雲海》。雲海並非登高就會自然出現的高山景緻，同樣仰賴各種條件的匯聚。首先，要有從平地往山地吹的風；其次，平地要夠潮濕，護風可以吸飽水；第三，山區必須夠冷，讓風中的水氣可以結成冰晶。少了任何一個條件，雲海都不會現身。
+這些匯聚在山巒間的水氣，還會形成降雨。被風帶上山的豐沛水氣，重新回歸液態，匯聚成溪，帶著泥沙，從兩、三千公尺的高度，奔向海洋。` },
+      12: { title: '《濤聲》', artist: '陳澄波，1939年，畫布油彩，91×116.5公分，私人收藏。', description: `1939年的冬季，陳澄波來到位於臺灣東北部的鼻頭角，望向南方的三貂角，迎著強風和黑潮。在東北季風捲起的千層浪間，他想要創作一幅有聲音的油畫。
+
+陳澄波在無意之間捕捉到一個海陸空共同組成的生態系。當東北季風呼嘯時，是藻類在礁石上恣意生長的時節。這些藻類因降雨或海浪的沖刷，流入汪洋，將魚類餵養得肥碩飽滿。勇於和大海搏鬥的釣客，會在這時跳上溼滑的礁岩，從海中拉出餐桌上的珍饈。
+
+在冷冽的風中，陳澄波畫下東北角的景緻。這片地景的色調如春夏般溫暖，讓人彷彿能聽見浪花拍擊礁石的聲音，體會自然力量與萬物碰撞出的熱度。` },
+      13: { title: '《玉山積雪》', artist: '陳澄波，約1947年，木板油彩，23.5×33公分，私人收藏。', description: `1947年初，陳澄波來到嘉義市政府附近，立好畫架。他注意到玉山積雪了，他想要把這美景留在畫中。在白雪皚皚的玉山前，他畫下了大武巒山，今日稱為鳩州嶺烏心石山。至於前景，他則畫下了被芭蕉樹包圍的臺灣農村。
+
+這是由遠而近、層層交錯的臺灣風景，但同時也呈現了從寒帶至熱帶的景緻。因板塊擠壓而形成的臺灣高山，雖是鶴立雞群，但並非是一座座孤島；雖不時白雪皚皚，但絕非毫無生機的冷酷異境。
+
+距今2萬7千年前至1萬8千年前，從北極降下的冰河覆蓋北半球，導致海平面降低上百公尺，臺灣海峽成為連接東亞的陸橋，高山則為冰河所覆蓋。多樣的生物與人類得以移入臺灣；因為冰河降臨，原本在島上的生物也在各個角落尋找避難所。冰河時期結束以後，臺灣海峽再現。那些來到臺灣的新移民，就留在這座島嶼上生活，逐步演化。` },
+    };
+
+    // ===== wall-09 QR scanner =====
+    const wall09ScanArea = document.getElementById('wall09ScanArea');
+    const wall09ScanBtn = document.getElementById('wall09ScanBtn');
+    const wall09ScannerEl = document.getElementById('wall09Scanner');
+    const wall09Video = document.getElementById('wall09Video');
+    const wall09ScannerStatus = document.getElementById('wall09ScannerStatus');
+    const wall09ScannerMsg = document.getElementById('wall09ScannerMsg');
+    const wall09ScannerMsgText = document.getElementById('wall09ScannerMsgText');
+    const wall09ScannerRetry = document.getElementById('wall09ScannerRetry');
+
+    let wall09Detector = null;
+    let wall09ScannerMode = null;
+    let wall09Canvas = null;
+    let wall09CanvasCtx = null;
+    let wall09Stream = null;
+    let wall09DetectLoop = null;
+    let wall09Scanning = false;
+    let wall09Paused = false;
+    let wall09LastScan = '';
+    let wall09LastScanTime = 0;
+    let wall09LastFrameTime = 0;
+    const SCAN_COOLDOWN_MS = 2000;
+    const JSQR_INTERVAL_MS = 300;
+
+    const qrToGood = {
+      '1': 'M01', '2': 'M02', '3': 'M03', '4': 'M04',
+      '5': 'M05', '6': 'M06', '7': 'M07', '8': 'M08'
+    };
+    const ALL_GOODS = ['M01', 'M02', 'M03', 'M04', 'M05', 'M06', 'M07', 'M08'];
+
+    const goodsInfo = {
+      'M01': { title: '身分證明書', text: `這張昭和三年（1928年）由「東京美術學校」（今東京藝術大學）校長正木直彥署名核發的身分證明書，紀錄了陳澄波作為該校研究生的求學歲月。小知識是，這張證明書的背面，密密麻麻地印著必須隨身攜帶、若退學或畢業必須立刻繳回學校等嚴格規定。這張小小的紙片，陪伴著這位來自台灣、比同學們都年長的「老學生」穿梭在東京的街頭與畫室，見證了他努力吸收現代藝術養分、準備將台灣色彩推向國際的黃金歲月。` },
+      'M02': { title: '教員許可證', text: `陳澄波在藝術之路上，也曾是一位擁有專業資格的教育者。這張由日本文部省於昭和二年（1927年）核發的教員免許狀，證明了他具備教授圖畫與手工科的資格。然而，這份證書上隱藏著一個令人心酸的時代小知識：證書旁特別蓋上了「非日本帝國臣民，僅限在私立學校有效」的字樣。這短短的一句話，道盡了當時台灣人身處殖民體制下的不平等待遇，但也見證了陳澄波在逆境中仍努力取得認證、冀望透過教育傳遞藝術星火的決心。` },
+      'M03': { title: '調色盤', text: `這塊長方形的調色盤，是陳澄波內心色彩世界的真實投影。這是一個帶有許多小方格的折疊式調色盤。小知識是，這個調色盤的格紋裡至今仍殘留著深淺不一、乾涸的顏料塊，而金屬蓋子內側更沾染了大片鮮豔的洋紅色與紫色的水彩痕跡，邊緣甚至還有顏料剝落的斑駁感。這些靜止在鐵盒上的斑斕色彩，彷彿還殘留著他當年調色時的溫度與悸動，將他對藝術的狂熱永遠保留了下來。` },
+      'M04': { title: '衣物', text: `陳澄波遇難時的衣物，是台灣歷史上最令人心碎的無聲證人。這些遺物包含了染有暗沉痕跡的白色襯衫，以及一件褐色長袖上衣和一件破損極為嚴重的褐色毛料背心。小知識是，那件編織毛背心上佈滿了怵目驚心的破洞與邊緣撕裂的痕跡，真實對應了檢案書上記載的致命槍傷。這些破損的衣物纖維，永遠定格了子彈貫穿身體的瞬間，也是他用生命深愛台灣這塊土地的最痛印記。` },
+      'M05': { title: '遺書', text: `在生命的最後時刻，陳澄波用鉛筆在小紙片上匆匆寫下了多封遺書。他在寫給家屬的遺言中，字跡雖然潦草卻充滿了對家人的眷戀，寫下「大家再見！請珍重！」、「兄妹和睦」等語。其中一個令人鼻酸的小知識是，他在遺言中特別交代「洋服簡單即可以」，並反覆叮囑「請不要幫我換掉西裝」。這份絕筆，展現了他面對死亡時，仍極力維持作為一位台灣士紳與藝術家的最後尊嚴。` },
+      'M06': { title: '畫具', text: `陳澄波生前留下的畫具中，包含了一排長短不一、由木頭與金屬和動物毛製成的畫筆，以及一把細長的畫刀。關於這些畫具的小知識是：陳澄波熱愛戶外寫生，作畫時充滿激情與力道，從這些畫筆筆桿上的斑駁痕跡與末端磨損的筆毛，就能看出它們曾陪伴主人經歷過多少次陽光下的揮灑。那把畫刀也曾無數次將他最愛的厚重油彩，豪邁地塗抹在畫布上，刻劃出台灣風土的生命力。` },
+      'M07': { title: '畢業證書', text: `這張泛黃的畢業證書，是陳澄波早年扎根本土教育的起點。畫面上同時呈現了1913年嘉義公學校的畢業證明，以及大正六年（1917年）由「臺灣總督府國語學校公學師範部乙科」所頒發的畢業證書。小知識是，早年能考上國語學校師範部，是極為優秀的台灣青年才能達成的成就。這張證書代表著他原本能以公學校訓導（教師）的身分安穩度日，但他最終卻選擇放下這份安穩，走向充滿未知卻絢爛的藝術家之路。` },
+      'M08': { title: '檢案書', text: `1947年的二二八事件中，陳澄波的生命畫下了最殘酷的休止符。這份開立於民國三十六年三月二十五日的死亡診斷書（檢案書），在「職業」一欄清晰地寫著「洋畫家」。令人無比沉痛的歷史鐵證是，死因欄位原本的文字被劃掉，被赤裸裸地改寫為「變死（槍斃死）」，並明確記載了致命傷為「胸部貫通銃創」。這份冰冷的官方文件，將一位畢生追求美好色彩的藝術家，硬生生化為了槍下亡魂的檔案。` }
+    };
+
+    async function initWall09Scanner() {
+      if (wall09ScannerMode) return true;
+
+      if ('BarcodeDetector' in window) {
+        try {
+          wall09Detector = new BarcodeDetector({ formats: ['qr_code'] });
+          wall09ScannerMode = 'barcode';
+          return true;
+        } catch (e) {
+          wall09Detector = null;
+        }
+      }
+
+      if (typeof jsQR === 'function') {
+        if (!wall09Canvas) {
+          wall09Canvas = document.createElement('canvas');
+          wall09CanvasCtx = wall09Canvas.getContext('2d', { willReadFrequently: true });
+        }
+        wall09ScannerMode = 'jsqr';
+        return true;
+      }
+
+      return false;
+    }
+
+    function detectWithJsQR() {
+      const video = wall09Video;
+      if (!video || video.readyState < video.HAVE_ENOUGH_DATA) return null;
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+      if (!w || !h) return null;
+      wall09Canvas.width = w;
+      wall09Canvas.height = h;
+      wall09CanvasCtx.drawImage(video, 0, 0, w, h);
+      const imageData = wall09CanvasCtx.getImageData(0, 0, w, h);
+      const result = jsQR(imageData.data, w, h, { inversionAttempts: 'dontInvert' });
+      return result ? result.data : null;
+    }
+
+    async function openWall09Camera() {
+      const constraints = { video: { facingMode: { ideal: 'environment' } } };
+      try {
+        return await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (e) {
+        return await navigator.mediaDevices.getUserMedia({ video: true });
+      }
+    }
+
+    function showScannerMessage(text, showRetry) {
+      if (wall09ScannerMsgText) wall09ScannerMsgText.textContent = text || '';
+      if (wall09ScannerRetry) wall09ScannerRetry.style.display = showRetry ? 'inline-block' : 'none';
+      if (wall09ScannerMsg) wall09ScannerMsg.style.display = 'flex';
+      if (wall09ScannerEl) wall09ScannerEl.style.display = 'block';
+    }
+
+    function hideScannerMessage() {
+      if (wall09ScannerMsg) wall09ScannerMsg.style.display = 'none';
+    }
+
+    function runDetectLoop() {
+      if (!wall09Scanning || wall09Paused || !wall09Video) return;
+      wall09DetectLoop = requestAnimationFrame(async () => {
+        if (!wall09Scanning || wall09Paused || !wall09Video) return;
+        if (wall09ScannerMode === 'barcode' && wall09Detector) {
+          try {
+            const results = await wall09Detector.detect(wall09Video);
+            if (results && results.length) {
+              const value = (results[0].rawValue || '').trim();
+              if (value) handleWall09Scan(value);
+            }
+          } catch (e) { /* frame not ready */ }
+        } else if (wall09ScannerMode === 'jsqr') {
+          const now = performance.now();
+          if (now - wall09LastFrameTime >= JSQR_INTERVAL_MS) {
+            wall09LastFrameTime = now;
+            const value = detectWithJsQR();
+            if (value) handleWall09Scan(value.trim());
+          }
+        }
+        runDetectLoop();
+      });
+    }
+
+    function pauseWall09Detection() {
+      wall09Paused = true;
+      if (wall09DetectLoop) {
+        cancelAnimationFrame(wall09DetectLoop);
+        wall09DetectLoop = null;
+      }
+    }
+
+    function resumeWall09Detection() {
+      if (!wall09Scanning || !wall09Paused) return;
+      wall09Paused = false;
+      runDetectLoop();
+    }
+
+    function resolveGoodId(decodedText) {
+      const raw = String(decodedText).trim();
+      if (qrToGood[raw]) return qrToGood[raw];
+      const upper = raw.toUpperCase();
+      if (ALL_GOODS.includes(upper)) return upper;
+      const digitOnly = raw.match(/^[1-8]$/);
+      if (digitOnly && qrToGood[digitOnly[0]]) return qrToGood[digitOnly[0]];
+      const tailDigit = raw.match(/(?:^|\/|=)([1-8])$/);
+      if (tailDigit && qrToGood[tailDigit[1]]) return qrToGood[tailDigit[1]];
+      return null;
+    }
+
+    function handleWall09Scan(decodedText) {
+      const goodId = resolveGoodId(decodedText);
+      if (!goodId) return;
+      const now = Date.now();
+      if (goodId === wall09LastScan && now - wall09LastScanTime < SCAN_COOLDOWN_MS) return;
+      wall09LastScan = goodId;
+      wall09LastScanTime = now;
+      pauseWall09Detection();
+      showGoodInfo(goodId);
+    }
+
+    async function startWall09Scanner() {
+      if (wall09Scanning) return;
+      hideScannerMessage();
+      if (wall09ScanBtn) wall09ScanBtn.style.display = 'none';
+      if (wall09ScannerEl) wall09ScannerEl.style.display = 'block';
+      showScannerMessage('正在啟動相機…', false);
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showScannerMessage('此裝置不支援相機功能。', true);
+        return;
+      }
+
+      const supported = await initWall09Scanner();
+      if (!supported) {
+        showScannerMessage('無法載入掃描引擎，請確認網路連線後重試。', true);
+        return;
+      }
+
+      try {
+        wall09Stream = await openWall09Camera();
+        wall09Video.srcObject = wall09Stream;
+        await wall09Video.play();
+        wall09Scanning = true;
+        wall09Paused = false;
+        hideScannerMessage();
+        if (wall09ScannerStatus) wall09ScannerStatus.style.display = 'block';
+        runDetectLoop();
+      } catch (err) {
+        const msg = (err && err.name === 'NotAllowedError')
+          ? '無法存取相機，請允許相機權限後再試。'
+          : '啟動相機失敗，請檢查裝置。';
+        showScannerMessage(msg, true);
+      }
+    }
+
+    function stopWall09Scanner() {
+      wall09Scanning = false;
+      wall09Paused = false;
+      if (wall09DetectLoop) {
+        cancelAnimationFrame(wall09DetectLoop);
+        wall09DetectLoop = null;
+      }
+      if (wall09Stream) {
+        wall09Stream.getTracks().forEach(t => t.stop());
+        wall09Stream = null;
+      }
+      if (wall09Video) wall09Video.srcObject = null;
+      hideScannerMessage();
+      if (wall09ScannerEl) wall09ScannerEl.style.display = 'none';
+      if (wall09ScannerStatus) wall09ScannerStatus.style.display = 'none';
+      if (wall09ScanBtn) wall09ScanBtn.style.display = 'block';
+    }
+
+    function resetWall09Scanner() {
+      stopWall09Scanner();
+      wall09Detector = null;
+      wall09ScannerMode = null;
+      wall09LastScan = '';
+      wall09LastScanTime = 0;
+      wall09LastFrameTime = 0;
+    }
+
+    function showWall09ScanUI(show) {
+      if (wall09ScanArea) wall09ScanArea.style.display = show ? 'block' : 'none';
+      if (!show) resetWall09Scanner();
+    }
+
+    // ===== easter egg: collect all 8 items =====
+    const easterEggOverlay = document.getElementById('easterEggOverlay');
+    const easterEggModal = document.getElementById('easterEggModal');
+    const mysteryKeyBtn = document.getElementById('mysteryKey');
+    const wall09Progress = document.getElementById('wall09Progress');
+
+    let currentGoodId = null;
+    let secretMode = null;
+    let easterEggModalOpen = false;
+    let easterEggTimer = null;
+    let onWall09 = false;
+    const viewedGoods = new Set();
+
+    function getViewedCount() {
+      return ALL_GOODS.filter(id => viewedGoods.has(id)).length;
+    }
+
+    function updateWall09Progress() {
+      if (wall09Progress) wall09Progress.textContent = `${getViewedCount()}/8`;
+    }
+
+    function showWall09Progress(show) {
+      if (!wall09Progress) return;
+      wall09Progress.style.display = show ? 'block' : 'none';
+      if (show) updateWall09Progress();
+    }
+
+    function resetWall09Progress() {
+      viewedGoods.clear();
+      if (easterEggTimer) {
+        clearTimeout(easterEggTimer);
+        easterEggTimer = null;
+      }
+      hideEasterEggModal();
+      hideGoodInfo(false);
+      updateWall09Progress();
+    }
+
+    function showEasterEggModal() {
+      if (!easterEggOverlay || !easterEggModal) return;
+      if (easterEggModalOpen) return;
+      easterEggModalOpen = true;
+      easterEggOverlay.classList.add('show');
+      easterEggOverlay.style.display = 'block';
+      easterEggModal.classList.add('show');
+      easterEggModal.style.display = 'flex';
+    }
+
+    function scheduleEasterEggCheck() {
+      if (getViewedCount() < 8) return;
+      if (easterEggTimer) clearTimeout(easterEggTimer);
+      easterEggTimer = setTimeout(() => {
+        easterEggTimer = null;
+        if (getViewedCount() === 8) showEasterEggModal();
+      }, 400);
+    }
+
+    function markGoodViewed(goodId) {
+      if (!ALL_GOODS.includes(goodId)) return false;
+      const isNew = !viewedGoods.has(goodId);
+      if (isNew) viewedGoods.add(goodId);
+      updateWall09Progress();
+      if (getViewedCount() === 8) scheduleEasterEggCheck();
+      return isNew;
+    }
+
+    function hideEasterEggModal() {
+      easterEggModalOpen = false;
+      if (easterEggOverlay) {
+        easterEggOverlay.classList.remove('show');
+        easterEggOverlay.style.display = 'none';
+      }
+      if (easterEggModal) {
+        easterEggModal.classList.remove('show');
+        easterEggModal.style.display = 'none';
+      }
+    }
+
+    // ===== epilogue: wall-10 → wall-11 → credits =====
+    const wall10Hint = document.getElementById('wall10Hint');
+    const epilogueDarken = document.getElementById('epilogueDarken');
+    const epilogueLayer = document.getElementById('epilogueLayer');
+    const epilogueCreditsText = document.getElementById('epilogueCreditsText');
+    const epiloguePhotoEls = document.querySelectorAll('#epiloguePhotos img');
+    const EPILOGUE_WAIT_MS = 1000;
+    const EPILOGUE_DARKEN_MS = 2000;
+    const EPILOGUE_CREDITS_MS = 40000;
+    const EPILOGUE_PHOTO_MS = 8000;
+    const EPILOGUE_FADEOUT_MS = 2000;
+
+    let epilogueTimers = [];
+    let epiloguePhotoTimer = null;
+    let epiloguePhotoIndex = 0;
+
+    function clearEpilogueTimers() {
+      epilogueTimers.forEach(id => clearTimeout(id));
+      epilogueTimers = [];
+      if (epiloguePhotoTimer) {
+        clearInterval(epiloguePhotoTimer);
+        epiloguePhotoTimer = null;
+      }
+    }
+
+    function scheduleEpilogue(fn, delay) {
+      const id = setTimeout(fn, delay);
+      epilogueTimers.push(id);
+      return id;
+    }
+
+    function resetEpilogueUI() {
+      clearEpilogueTimers();
+      if (epilogueDarken) epilogueDarken.classList.remove('active');
+      if (epilogueLayer) {
+        epilogueLayer.classList.remove('visible', 'fade-out');
+        epilogueLayer.style.display = 'none';
+      }
+      if (epilogueCreditsText) {
+        epilogueCreditsText.style.animation = 'none';
+        void epilogueCreditsText.offsetHeight;
+      }
+      epiloguePhotoEls.forEach((img, i) => img.classList.toggle('active', i === 0));
+      epiloguePhotoIndex = 0;
+      if (wall10Hint) wall10Hint.style.display = 'none';
+      if (imageBox) imageBox.classList.remove('wall10-clickable');
+    }
+
+    function goToWall10() {
+      resetWall09Progress();
+      onWall09 = false;
+      secretMode = 10;
+      renderSecretWall();
+    }
+
+    function renderSecretWall() {
+      resetEpilogueUI();
+      imageEl.src = 'wall/wall-10.PNG';
+      imageEl.alt = 'Wall 10';
+      prevBtn.style.display = 'none';
+      nextBtn.style.display = 'none';
+      artBtn.style.display = 'none';
+      memoryBtn.style.display = 'none';
+      dotBtn.style.display = 'none';
+      homeTitle.style.display = 'none';
+      galleryOverlay.style.display = 'none';
+      wall09GoodsOverlay.style.display = 'none';
+      showWall09ScanUI(false);
+      hideGoodInfo(false);
+      detailView.classList.remove('show');
+      detailOverlay.classList.remove('show');
+      hintEl.style.display = 'none';
+      if (wall10Hint) wall10Hint.style.display = 'block';
+      if (imageBox) imageBox.classList.add('wall10-clickable');
+    }
+
+    function startEpilogueSlideshow() {
+      epiloguePhotoIndex = 0;
+      epiloguePhotoEls.forEach((img, i) => img.classList.toggle('active', i === 0));
+      epiloguePhotoTimer = setInterval(() => {
+        epiloguePhotoEls[epiloguePhotoIndex].classList.remove('active');
+        epiloguePhotoIndex = (epiloguePhotoIndex + 1) % epiloguePhotoEls.length;
+        epiloguePhotoEls[epiloguePhotoIndex].classList.add('active');
+      }, EPILOGUE_PHOTO_MS);
+    }
+
+    function startEpilogueCredits() {
+      if (!epilogueCreditsText) return;
+      epilogueCreditsText.style.animation = `epilogueCreditScroll ${EPILOGUE_CREDITS_MS}ms linear forwards`;
+    }
+
+    function showEpilogueContent() {
+      if (epilogueLayer) {
+        epilogueLayer.style.display = 'flex';
+        epilogueLayer.classList.add('visible');
+        epilogueLayer.classList.remove('fade-out');
+      }
+      startEpilogueSlideshow();
+      startEpilogueCredits();
+      scheduleEpilogue(fadeOutEpilogue, EPILOGUE_CREDITS_MS);
+    }
+
+    function fadeOutEpilogue() {
+      if (epiloguePhotoTimer) {
+        clearInterval(epiloguePhotoTimer);
+        epiloguePhotoTimer = null;
+      }
+      if (epilogueLayer) epilogueLayer.classList.add('fade-out');
+      scheduleEpilogue(finishEpilogue, EPILOGUE_FADEOUT_MS);
+    }
+
+    function finishEpilogue() {
+      resetEpilogueUI();
+      secretMode = null;
+      currentPos = 0;
+      updateView();
+    }
+
+    function startEpilogue() {
+      if (secretMode !== 10) return;
+      secretMode = 11;
+      clearEpilogueTimers();
+      if (wall10Hint) wall10Hint.style.display = 'none';
+      if (imageBox) imageBox.classList.remove('wall10-clickable');
+
+      imageEl.src = 'wall/wall-11.jpg';
+      imageEl.alt = 'Wall 11';
+      if (epilogueDarken) epilogueDarken.classList.remove('active');
+      if (epilogueLayer) {
+        epilogueLayer.classList.remove('visible', 'fade-out');
+        epilogueLayer.style.display = 'none';
+      }
+
+      scheduleEpilogue(() => {
+        if (epilogueDarken) epilogueDarken.classList.add('active');
+        scheduleEpilogue(showEpilogueContent, EPILOGUE_DARKEN_MS);
+      }, EPILOGUE_WAIT_MS);
+    }
+
+    if (imageBox) {
+      imageBox.addEventListener('click', () => {
+        if (secretMode === 10) startEpilogue();
+      });
+    }
+
+    function fitGoodInfoImage(img) {
+      if (!img) return;
+      const isMobile = window.matchMedia('(max-width: 900px)').matches;
+      const maxW = isMobile ? 180 : 300;
+      const maxH = isMobile ? 180 : 340;
+      const apply = () => {
+        const nw = img.naturalWidth;
+        const nh = img.naturalHeight;
+        if (!nw || !nh) return;
+        const scale = Math.min(maxW / nw, maxH / nh);
+        img.style.width = `${Math.round(nw * scale)}px`;
+        img.style.height = `${Math.round(nh * scale)}px`;
+      };
+      img.onload = apply;
+      if (img.complete) apply();
+    }
+
+    function showGoodInfo(goodId) {
+      currentGoodId = goodId;
+      const img = document.getElementById('goodInfoImg');
+      const title = document.getElementById('goodInfoTitle');
+      const text = document.getElementById('goodInfoText');
+      if (img) {
+        img.style.width = '';
+        img.style.height = '';
+        img.src = `memory/${goodId}.PNG`;
+        fitGoodInfoImage(img);
+      }
+      const info = goodsInfo[goodId] || { title: goodId, text: '' };
+      if (title) title.textContent = info.title;
+      if (text) text.textContent = info.text;
+      window._wall09GoodsWasVisible = window._wall09GoodsWasVisible
+        || (wall09GoodsOverlay && wall09GoodsOverlay.style.display !== 'none');
+      if (wall09GoodsOverlay) wall09GoodsOverlay.style.display = 'none';
+      const panel = document.getElementById('goodInfoPanel');
+      if (panel) panel.classList.add('show');
+    }
+
+    function hideGoodInfo(countAsView = false) {
+      const panel = document.getElementById('goodInfoPanel');
+      if (panel) panel.classList.remove('show');
+      if (countAsView && currentGoodId) {
+        markGoodViewed(currentGoodId);
+      }
+      currentGoodId = null;
+      if (wall09GoodsOverlay && window._wall09GoodsWasVisible) {
+        wall09GoodsOverlay.style.display = 'block';
+      }
+      window._wall09GoodsWasVisible = false;
+      resumeWall09Detection();
+    }
+
+    const goodInfoClose = document.getElementById('goodInfoClose');
+    if (goodInfoClose) {
+      goodInfoClose.addEventListener('click', () => hideGoodInfo(true));
+    }
+
+    if (mysteryKeyBtn) mysteryKeyBtn.addEventListener('click', goToWall10);
+
+    if (wall09ScanBtn) wall09ScanBtn.addEventListener('click', startWall09Scanner);
+    if (wall09ScannerRetry) {
+      wall09ScannerRetry.addEventListener('click', () => {
+        stopWall09Scanner();
+        startWall09Scanner();
+      });
+    }
+
+    function formatWall(index) {
+      return `wall-${String(index).padStart(2, '0')}.JPG`;
+    }
+
+    const hintEl = document.querySelector('.hint');
+
+    // 定義實際存在且允許瀏覽的頁面索引，跳過已刪除的 wall-06/wall-07
+    const pages = [0, 1, 2, 3, 4, 5, 8, 9];
+    let currentPos = 0; // pages[currentPos] 為目前實際顯示的牆面編號
+
+    function updateView() {
+      if (secretMode === 10) {
+        renderSecretWall();
+        return;
+      }
+      if (secretMode === 11) return;
+      resetEpilogueUI();
+      hintEl.style.display = '';
+      const currentIndex = pages[currentPos];
+      const filename = formatWall(currentIndex);
+      imageEl.src = `wall/${filename}`;
+      imageEl.alt = `Wall ${String(currentIndex).padStart(2, '0')}`;
+      const isHome = currentIndex === 0;
+      const isSpecialPage = currentIndex === 1 || currentIndex === 8;
+      prevBtn.style.display = isHome ? 'none' : 'block';
+      nextBtn.style.display = isHome ? 'none' : 'block';
+      artBtn.style.display = isHome ? 'block' : 'none';
+      memoryBtn.style.display = isHome ? 'block' : 'none';
+      dotBtn.style.display = 'none';
+      homeTitle.style.display = isHome ? 'block' : 'none';
+      const galleryPages = {
+        2: [1, 2, 3],
+        3: [4, 5, 6],
+        4: [7, 8, 9, 10],
+        5: [11, 12, 13],
+      };
+      const pageFrames = galleryPages[currentIndex] || [];
+      const hasGallery = pageFrames.length > 0;
+      const isWall09 = currentIndex === 9;
+      if (!isWall09 && onWall09) resetWall09Progress();
+      galleryOverlay.style.display = isWall09 ? 'none' : hasGallery ? 'flex' : 'none';
+      wall09GoodsOverlay.style.display = isWall09 ? 'block' : 'none';
+      if (isWall09) {
+        showWall09ScanUI(true);
+        showWall09Progress(true);
+      } else {
+        showWall09ScanUI(false);
+        showWall09Progress(false);
+        hideGoodInfo(false);
+      }
+      onWall09 = isWall09;
+      // 針對 wall-04 使用交錯排列 class
+      if (currentIndex === 4) {
+        galleryOverlay.classList.add('alt-rows');
+      } else {
+        galleryOverlay.classList.remove('alt-rows');
+      }
+      if (hasGallery && !isWall09) {
+        const frameImages = [frameImg1, frameImg2, frameImg3, frameImg4];
+        frameImages.forEach((imgEl, index) => {
+          if (pageFrames[index] != null) {
+            imgEl.src = `painting/${String(pageFrames[index]).padStart(3, '0')}.jpg`;
+            imgEl.parentElement.style.display = 'block';
+          } else {
+            imgEl.src = '';
+            imgEl.parentElement.style.display = 'none';
+          }
+        });
+        galleryOverlay.style.width = pageFrames.length === 2 ? '55%' : pageFrames.length === 4 ? '92%' : '86%';
+      } else {
+        detailView.classList.remove('show');
+        detailOverlay.classList.remove('show');
+      }
+      nextBtn.style.right = isSpecialPage ? '30%' : '16px';
+      nextBtn.style.top = isSpecialPage ? '35%' : '50%';
+      hintEl.textContent = isHome
+        ? '請按上方按鈕進入下一頁'
+        : '使用鍵盤左右鍵或左右按鈕切換';
+    }
+
+    function showPrevious() {
+      if (secretMode) return;
+      if (pages[currentPos] === 0) return;
+      currentPos = (currentPos - 1 + pages.length) % pages.length;
+      updateView();
+    }
+
+    function showNext() {
+      if (secretMode) return;
+      currentPos = (currentPos + 1) % pages.length;
+      updateView();
+    }
+
+    function showDetail(id) {
+      const info = paintingInfo[id] || { title: `畫作 ${id}`, artist: '未知', description: '此畫作尚無介紹。' };
+      detailImg.src = `painting/${String(id).padStart(3, '0')}.jpg`;
+      detailTitle.textContent = info.title;
+      detailArtist.textContent = info.artist;
+      detailDescription.textContent = info.description;
+      detailView.classList.add('show');
+      detailOverlay.classList.add('show');
+      detailView.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeDetail() {
+      detailView.classList.remove('show');
+      detailOverlay.classList.remove('show');
+      detailView.setAttribute('aria-hidden', 'true');
+    }
+
+    prevBtn.addEventListener('click', showPrevious);
+    nextBtn.addEventListener('click', showNext);
+    artBtn.addEventListener('click', () => {
+      const p = pages.indexOf(1);
+      currentPos = p >= 0 ? p : 0;
+      updateView();
+    });
+    memoryBtn.addEventListener('click', () => {
+      const p = pages.indexOf(8);
+      currentPos = p >= 0 ? p : pages.length - 1;
+      updateView();
+    });
+    detailClose.addEventListener('click', closeDetail);
+    detailOverlay.addEventListener('click', closeDetail);
+    [frameImg1, frameImg2, frameImg3, frameImg4].forEach((imgEl, index) => {
+      imgEl.addEventListener('click', () => {
+        const currentIndex = pages[currentPos];
+        const pageFrames = {
+          2: [1, 2, 3],
+          3: [4, 5, 6],
+          4: [7, 8, 9, 10],
+          5: [11, 12, 13],
+        }[currentIndex] || [];
+        const id = pageFrames[index];
+        if (id) showDetail(id);
+      });
+    });
+
+    window.addEventListener('keydown', (event) => {
+      if (secretMode || pages[currentPos] === 0) return;
+      if (event.key === 'ArrowLeft') {
+        showPrevious();
+      } else if (event.key === 'ArrowRight') {
+        showNext();
+      }
+    });
+
+    updateView();
+  </script>
+</body>
+</html>
